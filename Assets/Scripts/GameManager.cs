@@ -14,8 +14,7 @@ public class GameManager : MonoBehaviour
     public float maxX; // Maximum X position for spawning blocks
     public Transform spawnPoint; // Position where blocks will spawn
     public float spawnRate; // Rate at which blocks spawn
-    public int[] blocksPerLevel; // Array to define max blocks per level
-    public int currentLevel = 0; // Current level index
+    public int blocksPerLevel = 10; // Number of blocks to spawn per level
 
     public GameObject tapText; // "Tap to Start" Text
     public GameObject gameOverPanel; // Game Over panel with buttons
@@ -31,7 +30,7 @@ public class GameManager : MonoBehaviour
     private int score = 0;
     private int highestScore = 0;
     private float startTime;
-    private int blocksSpawned = 0; // Counter for blocks spawned
+    private int blocksSpawnedInCurrentLevel = 0; // Tracks blocks spawned in the current level
 
     async void Start()
     {
@@ -39,7 +38,9 @@ public class GameManager : MonoBehaviour
         await SignIn(); // Authenticate the user
         await LoadHighestScore(); // Load the highest score from UGS
 
-        if (trophyImage != null) trophyImage.SetActive(false); // Ensure the trophy is hidden at the start
+        if (trophyImage != null)
+            trophyImage.SetActive(false); // Ensure the trophy is hidden at the start
+
         if (timeText != null) timeText.text = "";
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (tapText != null) tapText.SetActive(true);
@@ -73,7 +74,6 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("Game Started!");
         startTime = Time.time;
-        blocksSpawned = 0; // Reset count for new level
         StartSpawning();
         if (tapText != null) tapText.SetActive(false);
         gameStarted = true;
@@ -81,21 +81,26 @@ public class GameManager : MonoBehaviour
 
     private void StartSpawning()
     {
-        InvokeRepeating("SpawnBlock", 0.5f, spawnRate);
+        InvokeRepeating("SpawnBlock", 1f, spawnRate);
     }
 
     private void SpawnBlock()
     {
-        if (gameOver || blocksSpawned >= blocksPerLevel[currentLevel]) return;
+        if (gameOver || blocksSpawnedInCurrentLevel >= blocksPerLevel)
+        {
+            CancelInvoke("SpawnBlock"); // Stop spawning once the limit is reached
+            return;
+        }
 
         Vector3 spawnPos = spawnPoint.position;
         spawnPos.x = Random.Range(-maxX, maxX);
         Instantiate(block, spawnPos, Quaternion.identity);
 
-        blocksSpawned++;
         score++;
+        blocksSpawnedInCurrentLevel++;
         UpdateScore();
     }
+
 
     private void UpdateScore()
     {
