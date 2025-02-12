@@ -1,7 +1,12 @@
-using System.Collections;
+﻿using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Services.CloudSave;
+using Unity.Services.Core;
+using Unity.Services.Authentication;
+using System.Threading.Tasks;
 
 public class GameManager : MonoBehaviour
 {
@@ -9,38 +14,55 @@ public class GameManager : MonoBehaviour
     public float maxX; // Maximum X position for spawning blocks
     public Transform spawnPoint; // Position where blocks will spawn
     public float spawnRate; // Rate at which blocks spawn
+    public int[] blocksPerLevel; // Array to define max blocks per level
+    public int currentLevel = 0; // Current level index
 
     public GameObject tapText; // "Tap to Start" Text
     public GameObject gameOverPanel; // Game Over panel with buttons
     public TextMeshProUGUI scoreText; // UI Text for displaying score
     public TextMeshProUGUI timeText; // UI Text for displaying time
+    public TextMeshProUGUI highestScoreText; // UI Text for highest score
+    public TextMeshProUGUI scoreValueText; // UI Text for actual game-over score
+    public GameObject trophyImage; // Trophy image (Assign in Inspector)
 
-    private bool gameStarted = false; // Tracks if the game has started
-    [HideInInspector] public bool gameOver = false; // Tracks if the game is over (accessible to Player script)
+    private bool gameStarted = false;
+    [HideInInspector] public bool gameOver = false;
 
-    private int score = 0; // Player's score
-    private float startTime; // Time when the game started
+    private int score = 0;
+    private int highestScore = 0;
+    private float startTime;
+    private int blocksSpawned = 0; // Counter for blocks spawned
 
-    void Start()
+    async void Start()
     {
-        // Initialize UI elements
+        await UnityServices.InitializeAsync(); // Initialize UGS
+        await SignIn(); // Authenticate the user
+        await LoadHighestScore(); // Load the highest score from UGS
+
+        if (trophyImage != null) trophyImage.SetActive(false); // Ensure the trophy is hidden at the start
         if (timeText != null) timeText.text = "";
-        if (gameOverPanel != null) gameOverPanel.SetActive(false); // Hide Game Over panel at start
-        if (tapText != null) tapText.SetActive(true); // Show "Tap to Start"
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        if (tapText != null) tapText.SetActive(true);
+    }
+
+    async Task SignIn()
+    {
+        if (!AuthenticationService.Instance.IsSignedIn)
+        {
+            await AuthenticationService.Instance.SignInAnonymouslyAsync(); // Anonymous login
+            Debug.Log("Signed in as: " + AuthenticationService.Instance.PlayerId);
+        }
     }
 
     void Update()
     {
-        // Start the game when the player taps/clicks
         if (Input.GetMouseButtonDown(0) && !gameStarted && !gameOver)
         {
             StartGame();
         }
 
-        // Prevent player input after Game Over
         if (gameOver) return;
 
-        // Update the timer if the game is running
         if (gameStarted)
         {
             UpdateTime();
@@ -50,27 +72,27 @@ public class GameManager : MonoBehaviour
     private void StartGame()
     {
         Debug.Log("Game Started!");
-        startTime = Time.time; // Record the start time
-        StartSpawning(); // Start spawning blocks
-        if (tapText != null) tapText.SetActive(false); // Hide "Tap to Start"
+        startTime = Time.time;
+        blocksSpawned = 0; // Reset count for new level
+        StartSpawning();
+        if (tapText != null) tapText.SetActive(false);
         gameStarted = true;
     }
 
     private void StartSpawning()
     {
-        InvokeRepeating("SpawnBlock", 0.5f, spawnRate); // Start spawning blocks repeatedly
+        InvokeRepeating("SpawnBlock", 0.5f, spawnRate);
     }
 
     private void SpawnBlock()
     {
-        if (gameOver) return; // Stop spawning if the game is over
+        if (gameOver || blocksSpawned >= blocksPerLevel[currentLevel]) return;
 
-        // Randomize the spawn position
         Vector3 spawnPos = spawnPoint.position;
         spawnPos.x = Random.Range(-maxX, maxX);
         Instantiate(block, spawnPos, Quaternion.identity);
 
-        // Increase score and update the UI
+        blocksSpawned++;
         score++;
         UpdateScore();
     }
@@ -95,38 +117,96 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void GameOver()
+    public async void GameOver()
     {
         Debug.Log("Game Over called!");
-
-        if (gameOverPanel == null)
-        {
-            Debug.LogError("gameOverPanel is not assigned!");
-            return;
-        }
-
         gameOver = true;
         gameStarted = false;
-        CancelInvoke("SpawnBlock"); // Stop spawning blocks
+        CancelInvoke("SpawnBlock");
 
-        if (tapText != null)
+        if (tapText != null) tapText.SetActive(false);
+
+        // Update the UI for current score
+        if (scoreValueText != null)
         {
-            tapText.SetActive(false);
+            scoreValueText.text = "Score: " + score.ToString();
         }
 
-        // Show Game Over UI
-        gameOverPanel.SetActive(true);
+        // Check and update the highest score
+        if (score > highestScore)
+        {
+            highestScore = score; // Update the local highest score
+            if (highestScoreText != null)
+            {
+                highestScoreText.text = "New Top Score: " + highestScore;
+            }
+            if (trophyImage != null)
+            {
+                trophyImage.SetActive(true); // Show the Trophy Image
+            }
+            await SaveHighestScore(highestScore);
+        }
+        else
+        {
+            if (highestScoreText != null)
+            {
+                highestScoreText.text = "Top Score: " + highestScore;
+            }
+            if (trophyImage != null)
+            {
+                trophyImage.SetActive(false); // Hide Trophy if no new high score
+            }
+        }
+
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(true);
+        }
+    }
+
+    private async Task LoadHighestScore()
+    {
+        try
+        {
+            var data = await CloudSaveService.Instance.Data.LoadAsync(new HashSet<string> { "highest_score" });
+            if (data.ContainsKey("highest_score"))
+            {
+                highestScore = int.Parse(data["highest_score"].ToString());
+                if (highestScoreText != null)
+                {
+                    highestScoreText.text = "Top Score: " + highestScore;
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("Failed to load highest score: " + e.Message);
+        }
+    }
+
+    private async Task SaveHighestScore(int newScore)
+    {
+        try
+        {
+            var data = new Dictionary<string, object> { { "highest_score", newScore } };
+            await CloudSaveService.Instance.Data.ForceSaveAsync(data);
+            Debug.Log("Highest Score Saved: " + newScore);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("Failed to save highest score: " + e.Message);
+        }
     }
 
     public void RetryGame()
     {
         Debug.Log("Retry clicked!");
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex); // Reload the current scene
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     public void ExitGame()
     {
         Debug.Log("Game Exiting...");
-        Application.Quit(); // Quit the application
+        Application.Quit();
     }
 }

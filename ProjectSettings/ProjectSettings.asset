@@ -791,11 +791,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 395315a5-1bd0-4805-907c-aa46542e6a82
+  cloudProjectId: a18610d1-d79f-44c0-bb65-e49aec695230
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
   projectName: DogdeGame
-  organizationId: unity_97a3990b67d562d5e789
+  organizationId: unity_11cfb6771634bc9ef231
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}

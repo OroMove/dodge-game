@@ -1,0 +1,4 @@
+repository "DogdeGame/DogdeGame@18968244293837@cloud"
+  path "/"
+    br "/main"
+    co "/main"
