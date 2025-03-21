@@ -165,7 +165,7 @@ PlayerSettings:
   androidMinAspectRatio: 1
   applicationIdentifier:
     Android: com.OroMove.OroDodge
-    Standalone: com.DefaultCompany.2D-URP
+    Standalone: com.OroMove.OroDodge
   buildNumber:
     Standalone: 0
     VisionOS: 0
@@ -292,7 +292,7 @@ PlayerSettings:
   - m_BuildTarget: 
     m_Icons:
     - serializedVersion: 2
-      m_Icon: {fileID: 2800000, guid: f7b4ea4c410cdb64c86e7ba653fb5b8a, type: 3}
+      m_Icon: {fileID: 2800000, guid: f152ec177a73e6740b1f244634f226b3, type: 3}
       m_Width: 128
       m_Height: 128
       m_Kind: 0
@@ -789,12 +789,12 @@ PlayerSettings:
   qnxGraphicConfPath: 
   apiCompatibilityLevel: 6
   captureStartupLogs: {}
-  activeInputHandler: 2
+  activeInputHandler: 1
   windowsGamepadBackendHint: 0
-  cloudProjectId: a18610d1-d79f-44c0-bb65-e49aec695230
+  cloudProjectId: 2c2a1817-bbaf-4369-aeaa-84c92eb1b0ac
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: DogdeGame
+  projectName: Authentication
   organizationId: unity_11cfb6771634bc9ef231
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
